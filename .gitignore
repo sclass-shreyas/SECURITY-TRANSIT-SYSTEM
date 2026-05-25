@@ -5,3 +5,4 @@ __pycache__/
 .pytest_cache/
 *.pt
 .env
+analytics/firebase_config.json
