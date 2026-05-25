@@ -10,21 +10,14 @@ from deep_sort_realtime.deepsort_tracker import DeepSort
 
 class ObjectTracker:
     """Track detections and return confirmed tracked objects."""
-
+    
     def __init__(self) -> None:
         """Initialize DeepSORT tracker with balanced defaults."""
         self.tracker = DeepSort(max_age=30, n_init=2)
+        self._confidence_cache: dict[int, float] = {}
 
     def update(self, detections: list[dict[str, Any]], frame: np.ndarray) -> list[dict[str, Any]]:
-        """Update tracker state and return confirmed tracks.
-
-        Args:
-            detections: Detector output list.
-            frame: Current frame.
-
-        Returns:
-            List of tracked object dictionaries.
-        """
+        """Update tracker state and return confirmed tracks."""
         if not detections:
             return []
 
@@ -36,8 +29,8 @@ class ObjectTracker:
             )
 
         tracks = self.tracker.update_tracks(ds_inputs, frame=frame)
-
         tracked_objects: list[dict[str, Any]] = []
+
         for track in tracks:
             if not track.is_confirmed():
                 continue
@@ -47,14 +40,18 @@ class ObjectTracker:
 
             x1, y1, x2, y2 = ltrb
             class_name = track.get_det_class() or "unknown"
-            confidence = float(track.get_det_conf() or 0.0)
-            tracked_objects.append(
-                {
-                    "object_id": int(track.track_id),
-                    "class_name": class_name,
-                    "confidence": confidence,
-                    "bbox": [int(x1), int(y1), int(x2), int(y2)],
-                }
-            )
+            
+            # Cache confidence on first detection, reuse on subsequent frames
+            raw_conf = track.get_det_conf()
+            if raw_conf is not None:
+                self._confidence_cache[track.track_id] = float(raw_conf)
+            confidence = self._confidence_cache.get(track.track_id, 0.0)
+
+            tracked_objects.append({
+                "object_id": int(track.track_id),
+                "class_name": class_name,
+                "confidence": confidence,
+                "bbox": [int(x1), int(y1), int(x2), int(y2)],
+            })
 
         return tracked_objects
