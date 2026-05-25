@@ -1,0 +1,22 @@
+{
+  "zones": [
+    {
+      "id": "zone_001",
+      "name": "entry_turnstiles",
+      "polygon": [[30, 330], [245, 330], [245, 620], [30, 620]],
+      "restricted": false
+    },
+    {
+      "id": "zone_002",
+      "name": "platform_waiting_zone",
+      "polygon": [[250, 250], [470, 250], [520, 600], [220, 600]],
+      "restricted": false
+    },
+    {
+      "id": "zone_003",
+      "name": "staff_only_service_corridor",
+      "polygon": [[430, 40], [620, 40], [620, 230], [430, 230]],
+      "restricted": true
+    }
+  ]
+}
