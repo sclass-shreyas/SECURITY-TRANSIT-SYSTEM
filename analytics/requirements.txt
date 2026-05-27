@@ -1,0 +1,5 @@
+fastapi==0.115.12
+uvicorn==0.34.2
+mediapipe==0.10.21
+firebase-admin==6.8.0
+python-multipart==0.0.12
