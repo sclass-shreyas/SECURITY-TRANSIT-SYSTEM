@@ -14,7 +14,7 @@ def _track(
     confirmed: bool,
     bbox: list[int],
     class_name: str = "person",
-    confidence: float | None = 0.9,
+    confidence: float = 0.9,
 ) -> MagicMock:
     track = MagicMock()
     track.track_id = track_id
@@ -69,19 +69,3 @@ def test_output_contains_required_keys(mock_deepsort: MagicMock) -> None:
 
     assert len(result) == 1
     assert set(result[0].keys()) == {"object_id", "class_name", "confidence", "bbox"}
-
-
-@patch("tracker.DeepSort")
-def test_tracks_without_current_detection_are_not_annotated(mock_deepsort: MagicMock) -> None:
-    """Predicted tracks without a fresh detection should not remain on screen."""
-    ds = MagicMock()
-    ds.update_tracks.return_value = [_track(9, True, [10, 20, 30, 40], confidence=None)]
-    mock_deepsort.return_value = ds
-
-    tracker = ObjectTracker()
-    detections = [{"class_name": "person", "confidence": 0.9, "bbox": [10, 20, 30, 40]}]
-    frame = np.zeros((640, 640, 3), dtype=np.uint8)
-
-    result = tracker.update(detections, frame)
-
-    assert result == []

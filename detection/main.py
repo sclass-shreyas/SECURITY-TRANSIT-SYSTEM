@@ -43,9 +43,10 @@ def _build_event(
     payload_objects: list[dict[str, Any]] = []
 
     for obj in tracked_objects:
-        zones = [config.GLOBAL_ZONE_ID]
+        zones = zone_manager.get_zones_for_object(obj["bbox"])
         dwell_by_zone = zone_manager.update_dwell(obj["object_id"], zones, timestamp_epoch)
         max_dwell = max(dwell_by_zone.values(), default=0.0)
+        restricted_alert = any(zone_manager.zones[zone_id]["restricted"] for zone_id in zones)
 
         payload_objects.append(
             {
@@ -56,7 +57,7 @@ def _build_event(
                 "centroid": _centroid_from_bbox(obj["bbox"]),
                 "zones": zones,
                 "dwell_seconds": round(float(max_dwell), 2),
-                "restricted_zone_alert": False,
+                "restricted_zone_alert": restricted_alert,
             }
         )
 
@@ -67,8 +68,23 @@ def _build_event(
     }
 
 
-def _draw_overlays(frame: Any, tracked_objects: list[dict[str, Any]]) -> None:
-    """Draw tracked object overlays on frame."""
+def _draw_overlays(frame: Any, tracked_objects: list[dict[str, Any]], zone_manager: ZoneManager) -> None:
+    """Draw zones and tracked object overlays on frame."""
+    for zone in zone_manager.zones.values():
+        color = (0, 0, 255) if zone["restricted"] else (0, 255, 0)
+        cv2.polylines(frame, [zone["polygon"]], True, color, 2)
+        label_anchor = tuple(zone["polygon"][0])
+        cv2.putText(
+            frame,
+            f"{zone['id']}:{zone['name']}",
+            label_anchor,
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.45,
+            color,
+            1,
+            cv2.LINE_AA,
+        )
+
     for obj in tracked_objects:
         x1, y1, x2, y2 = obj["bbox"]
         cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 255, 0), 2)
@@ -88,6 +104,7 @@ async def main() -> None:
     """Run the async real-time detection, tracking, zoning, and publishing loop."""
     _setup_logging()
     logger = logging.getLogger("main")
+
     base_dir = Path(__file__).resolve().parent
     zones_path = str(base_dir / config.ZONES_FILE)
 
@@ -102,21 +119,22 @@ async def main() -> None:
 
     try:
         while True:
+            loop_start = time.perf_counter()
+
             success, frame = capture.read_frame()
             if not success:
-                logging.getLogger("main").warning("Failed to read frame; continuing.")
+                logger.warning("Failed to read frame; continuing.")
                 await asyncio.sleep(0)
                 continue
 
             detections = detector.detect(frame)
             tracked_objects = tracker.update(detections, frame)
-            zone_manager.clear_inactive_objects({obj["object_id"] for obj in tracked_objects})
 
             now = time.time()
             event = _build_event(frame_id, tracked_objects, zone_manager, now)
             await publisher.publish(event)
 
-            _draw_overlays(frame, tracked_objects)
+            _draw_overlays(frame, tracked_objects, zone_manager)
             cv2.imshow(config.WINDOW_NAME, frame)
 
             frame_id += 1
@@ -129,7 +147,9 @@ async def main() -> None:
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
 
-            await asyncio.sleep(0)
+            elapsed_loop = time.perf_counter() - loop_start
+            sleep_time = max(0.0, config.TARGET_FRAME_TIME_SECONDS - elapsed_loop)
+            await asyncio.sleep(sleep_time)
 
     finally:
         capture.release()

@@ -7,19 +7,20 @@ from typing import Any
 import numpy as np
 from deep_sort_realtime.deepsort_tracker import DeepSort
 
-import config
-
 
 class ObjectTracker:
     """Track detections and return confirmed tracked objects."""
-
+    
     def __init__(self) -> None:
         """Initialize DeepSORT tracker with balanced defaults."""
-        self.tracker = DeepSort(max_age=config.TRACK_MAX_AGE, n_init=config.TRACK_N_INIT)
+        self.tracker = DeepSort(max_age=30, n_init=2)
         self._confidence_cache: dict[int, float] = {}
 
     def update(self, detections: list[dict[str, Any]], frame: np.ndarray) -> list[dict[str, Any]]:
         """Update tracker state and return confirmed tracks."""
+        if not detections:
+            return []
+
         ds_inputs = []
         for det in detections:
             x1, y1, x2, y2 = det["bbox"]
@@ -37,13 +38,11 @@ class ObjectTracker:
             if ltrb is None:
                 continue
 
-            raw_conf = track.get_det_conf()
-            if raw_conf is None:
-                self._confidence_cache.pop(int(track.track_id), None)
-                continue
-
             x1, y1, x2, y2 = ltrb
             class_name = track.get_det_class() or "unknown"
+            
+            # Cache confidence on first detection, reuse on subsequent frames
+            raw_conf = track.get_det_conf()
             if raw_conf is not None:
                 self._confidence_cache[track.track_id] = float(raw_conf)
             confidence = self._confidence_cache.get(track.track_id, 0.0)

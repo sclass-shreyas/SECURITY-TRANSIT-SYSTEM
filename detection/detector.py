@@ -51,7 +51,6 @@ class Detector:
             source=frame,
             conf=config.CONFIDENCE_THRESHOLD,
             iou=config.NMS_IOU_THRESHOLD,
-            imgsz=config.INFERENCE_IMAGE_SIZE,
             verbose=False,
             device=self.device,
         )

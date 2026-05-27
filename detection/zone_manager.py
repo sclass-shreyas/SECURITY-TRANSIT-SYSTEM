@@ -74,9 +74,3 @@ class ZoneManager:
             dwell_times[zone_id] = max(0.0, timestamp - self._dwell_started_at[key])
 
         return dwell_times
-
-    def clear_inactive_objects(self, active_object_ids: set[int]) -> None:
-        """Drop dwell state for objects no longer present in frame."""
-        keys_to_remove = [key for key in self._dwell_started_at if key[0] not in active_object_ids]
-        for key in keys_to_remove:
-            del self._dwell_started_at[key]

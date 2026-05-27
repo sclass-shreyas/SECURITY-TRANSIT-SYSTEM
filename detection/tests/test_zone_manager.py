@@ -81,16 +81,3 @@ def test_reload_zones_rereads_file(tmp_path: Path) -> None:
     zm.reload_zones()
 
     assert zm.zones["zone_001"]["name"] == "new_name"
-
-
-def test_clear_inactive_objects_removes_stale_dwell_state(tmp_path: Path) -> None:
-    """Dwell state should be cleared once an object is no longer active."""
-    zones_file = tmp_path / "zones.json"
-    zones_file.write_text(json.dumps(_zones_payload()), encoding="utf-8")
-
-    zm = ZoneManager(str(zones_file))
-    zm.update_dwell(1, ["zone_001"], 10.0)
-    zm.clear_inactive_objects(set())
-    reentered = zm.update_dwell(1, ["zone_001"], 20.0)
-
-    assert reentered["zone_001"] == 0.0
