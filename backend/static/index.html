@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Smart Transit Security</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --line: #2b3142;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #6366f1;
+    }
+    * { box-sizing: border-box; }
+    body {
+      min-width: 1024px;
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .shell { width: min(1180px, calc(100vw - 48px)); margin: 24px auto; border: 1px solid var(--line); background: var(--panel); }
+    header { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px; border-bottom: 1px solid var(--line); }
+    h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: 0; }
+    .status { display: flex; gap: 12px; align-items: center; color: var(--muted); font-weight: 600; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; background: #f59e0b; box-shadow: 0 0 0 4px rgba(245,158,11,.12); }
+    .dot.ok { background: #22c55e; box-shadow: 0 0 0 4px rgba(34,197,94,.12); }
+    .dot.err { background: #ef4444; box-shadow: 0 0 0 4px rgba(239,68,68,.12); }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--line); }
+    .stat { padding: 18px 22px; border-right: 1px solid var(--line); min-height: 92px; }
+    .stat:last-child { border-right: 0; }
+    .label { color: var(--muted); font-size: 12px; text-transform: uppercase; font-weight: 700; }
+    .value { margin-top: 10px; font-size: 28px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    section { padding: 20px 22px; border-bottom: 1px solid var(--line); }
+    section:last-child { border-bottom: 0; }
+    .section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    h2 { margin: 0; font-size: 14px; letter-spacing: 0; text-transform: uppercase; }
+    .rule { flex: 1; height: 1px; background: var(--line); margin-left: 14px; }
+    .reconnect { color: #f59e0b; font-size: 13px; display: none; }
+    .feed { display: grid; gap: 8px; max-height: 260px; overflow: auto; }
+    .feed-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #121620; border: 1px solid var(--line); }
+    .badge { display: inline-flex; min-width: 70px; justify-content: center; padding: 4px 8px; border-radius: 4px; color: #fff; font-size: 12px; font-weight: 800; text-transform: uppercase; }
+    .mono { font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace; }
+    .muted { color: var(--muted); }
+    .filters { display: flex; gap: 10px; }
+    select { min-width: 140px; background: #121620; color: var(--text); border: 1px solid var(--line); padding: 8px 10px; outline: none; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    th, td { padding: 12px 10px; border-bottom: 1px solid var(--line); text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    th { color: var(--muted); font-size: 12px; text-transform: uppercase; }
+    tbody tr:hover { background: #151925; }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <h1>Smart Transit Security</h1>
+      <div class="status"><span>P3</span><span class="dot" id="statusDot"></span></div>
+    </header>
+
+    <div class="stats">
+      <div class="stat"><div class="label">Total Alerts</div><div class="value" id="totalAlerts">0</div></div>
+      <div class="stat"><div class="label">High Severity</div><div class="value" id="highSeverity">0</div></div>
+      <div class="stat"><div class="label">Top Zone</div><div class="value mono" id="topZone">-</div></div>
+      <div class="stat"><div class="label">Top Alert Type</div><div class="value" id="topType">-</div></div>
+    </div>
+
+    <section>
+      <div class="section-head"><h2>Live Feed</h2><div class="rule"></div><span class="reconnect" id="reconnect">Reconnecting...</span></div>
+      <div class="feed" id="feed"></div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>All Alerts</h2>
+        <div class="filters">
+          <select id="typeFilter"><option value="">All types</option></select>
+          <select id="severityFilter"><option value="">All severities</option></select>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>Type</th><th>Severity</th><th>Zone</th><th>Object ID</th><th>Timestamp</th></tr></thead>
+        <tbody id="alertsBody"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script>
+    const state = { alerts: [] };
+    const severityColors = { high: "#ef4444", medium: "#f59e0b", low: "#22c55e" };
+
+    function relativeTime(value) {
+      const seconds = Math.max(0, Math.round((Date.now() - new Date(value).getTime()) / 1000));
+      if (seconds < 60) return `${seconds}s ago`;
+      const minutes = Math.round(seconds / 60);
+      if (minutes < 60) return `${minutes}m ago`;
+      return `${Math.round(minutes / 60)}h ago`;
+    }
+
+    async function fetchJson(url) {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(response.statusText);
+      return response.json();
+    }
+
+    async function updateHealth() {
+      const dot = document.getElementById("statusDot");
+      try {
+        const health = await fetchJson("/health/");
+        dot.className = `dot ${health.status === "ok" ? "ok" : ""}`;
+      } catch {
+        dot.className = "dot err";
+      }
+    }
+
+    async function updateStats() {
+      const stats = await fetchJson("/api/v1/stats/");
+      document.getElementById("totalAlerts").textContent = stats.total_alerts;
+      document.getElementById("highSeverity").textContent = stats.high_severity_count;
+      document.getElementById("topZone").textContent = stats.most_active_zone || "-";
+      const topType = Object.entries(stats.by_type || {}).sort((a, b) => b[1] - a[1])[0];
+      document.getElementById("topType").textContent = topType ? topType[0] : "-";
+    }
+
+    function badge(severity) {
+      const color = severityColors[severity] || "#64748b";
+      return `<span class="badge" style="background:${color}">${severity}</span>`;
+    }
+
+    function renderAlerts() {
+      const type = document.getElementById("typeFilter").value;
+      const severity = document.getElementById("severityFilter").value;
+      const rows = state.alerts.filter(a => (!type || a.alert_type === type) && (!severity || a.severity === severity));
+      document.getElementById("alertsBody").innerHTML = rows.map(a => `
+        <tr>
+          <td>${a.alert_type}</td>
+          <td>${badge(a.severity)}</td>
+          <td class="mono">${a.zone}</td>
+          <td class="mono">${a.object_id}</td>
+          <td class="mono">${new Date(a.timestamp).toLocaleString()}</td>
+        </tr>`).join("");
+    }
+
+    function syncFilters() {
+      const typeFilter = document.getElementById("typeFilter");
+      const severityFilter = document.getElementById("severityFilter");
+      const currentType = typeFilter.value;
+      const currentSeverity = severityFilter.value;
+      const types = [...new Set(state.alerts.map(a => a.alert_type))].sort();
+      const severities = [...new Set(state.alerts.map(a => a.severity))].sort();
+      typeFilter.innerHTML = `<option value="">All types</option>${types.map(v => `<option value="${v}">${v}</option>`).join("")}`;
+      severityFilter.innerHTML = `<option value="">All severities</option>${severities.map(v => `<option value="${v}">${v}</option>`).join("")}`;
+      typeFilter.value = currentType;
+      severityFilter.value = currentSeverity;
+    }
+
+    async function updateAlerts() {
+      state.alerts = await fetchJson("/alerts?limit=100");
+      syncFilters();
+      renderAlerts();
+    }
+
+    function addFeed(alert) {
+      const feed = document.getElementById("feed");
+      const row = document.createElement("div");
+      row.className = "feed-row";
+      row.innerHTML = `${badge(alert.severity)} <strong>${alert.alert_type}</strong><span class="mono">${alert.zone}</span><span class="mono">ID ${alert.object_id}</span><span class="muted">${relativeTime(alert.timestamp)}</span>`;
+      feed.prepend(row);
+      while (feed.children.length > 50) feed.lastChild.remove();
+    }
+
+    function connectStream() {
+      const reconnect = document.getElementById("reconnect");
+      const source = new EventSource("/api/v1/stream");
+      source.onmessage = event => {
+        reconnect.style.display = "none";
+        if (event.data === "ping") return;
+        addFeed(JSON.parse(event.data));
+        updateStats().catch(() => {});
+      };
+      source.onerror = () => { reconnect.style.display = "inline"; };
+    }
+
+    document.getElementById("typeFilter").addEventListener("change", renderAlerts);
+    document.getElementById("severityFilter").addEventListener("change", renderAlerts);
+    updateHealth();
+    updateStats().catch(() => {});
+    updateAlerts().catch(() => {});
+    connectStream();
+    setInterval(updateHealth, 10000);
+    setInterval(() => updateStats().catch(() => {}), 10000);
+    setInterval(() => updateAlerts().catch(() => {}), 30000);
+  </script>
+</body>
+</html>

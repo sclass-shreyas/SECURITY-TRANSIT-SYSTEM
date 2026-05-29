@@ -1,20 +1,9 @@
-from datetime import datetime
+from __future__ import annotations
 
 from pydantic import BaseModel
 
 
 class MessageResponse(BaseModel):
+    """Simple message response body."""
+
     message: str
-
-
-class HealthResponse(BaseModel):
-    status: str
-    service: str
-    version: str
-    timestamp: datetime
-
-
-class ReadyResponse(BaseModel):
-    status: str
-    ready: bool
-    database: str

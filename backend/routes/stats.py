@@ -1,19 +1,45 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
+from __future__ import annotations
 
-from backend.database.deps import get_db
-from backend.schemas.stats import StatsSummary, TimelinePoint
-from backend.services.stats import get_stats_summary, get_timeline
+from fastapi import APIRouter, Request
+from sqlalchemy import func, select
 
-router = APIRouter(prefix="/api/v1", tags=["stats"])
+from backend.models import Alert, Event
+from backend.schemas.stats import AlertStats
 
-
-@router.get("", response_model=StatsSummary)
-@router.get("/summary", response_model=StatsSummary)
-async def stats_summary(db: AsyncSession = Depends(get_db)) -> StatsSummary:
-    return await get_stats_summary(db)
+router = APIRouter(prefix="/api/v1/stats", tags=["stats"])
 
 
-@router.get("/timeline", response_model=list[TimelinePoint])
-async def stats_timeline(db: AsyncSession = Depends(get_db)) -> list[TimelinePoint]:
-    return await get_timeline(db)
+@router.get("/", response_model=AlertStats)
+async def read_stats(request: Request) -> AlertStats:
+    """Return dashboard aggregate statistics."""
+    async with request.app.state.sessionmaker() as session:
+        total_alerts = await session.scalar(select(func.count()).select_from(Alert))
+        high_severity_count = await session.scalar(
+            select(func.count()).select_from(Alert).where(Alert.severity == "high")
+        )
+        total_events = await session.scalar(select(func.count()).select_from(Event))
+
+        type_rows = (
+            await session.execute(select(Alert.alert_type, func.count()).group_by(Alert.alert_type))
+        ).all()
+        severity_rows = (
+            await session.execute(select(Alert.severity, func.count()).group_by(Alert.severity))
+        ).all()
+        zone_row = (
+            await session.execute(
+                select(Alert.zone, func.count())
+                .where(Alert.zone != "")
+                .group_by(Alert.zone)
+                .order_by(func.count().desc())
+                .limit(1)
+            )
+        ).first()
+
+    return AlertStats(
+        total_alerts=int(total_alerts or 0),
+        by_type={str(alert_type): int(count) for alert_type, count in type_rows},
+        by_severity={str(severity): int(count) for severity, count in severity_rows},
+        most_active_zone=str(zone_row[0]) if zone_row else None,
+        high_severity_count=int(high_severity_count or 0),
+        total_events=int(total_events or 0),
+    )

@@ -1,38 +1,58 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from __future__ import annotations
 
-from backend.database.deps import get_db
+import json
+
+from fastapi import APIRouter, HTTPException, Request, status
+from sqlalchemy import select
+
+from backend.models import Zone
 from backend.schemas.common import MessageResponse
 from backend.schemas.zone import ZoneIn, ZoneOut
-from backend.services.zones import create_zone, delete_zone, get_zone, list_zones, update_zone
 
-router = APIRouter(prefix="/api/v1", tags=["zones"])
-
-
-@router.get("/zones", response_model=list[ZoneOut])
-async def read_zones(db: AsyncSession = Depends(get_db)) -> list[ZoneOut]:
-    return await list_zones(db)
+router = APIRouter(prefix="/api/v1/zones", tags=["zones"])
 
 
-@router.post("/zones", response_model=ZoneOut)
-async def add_zone(payload: ZoneIn, db: AsyncSession = Depends(get_db)) -> ZoneOut:
-    zone = await create_zone(db, payload)
-    return ZoneOut.model_validate(zone)
+@router.get("/", response_model=list[ZoneOut])
+async def list_zones(request: Request) -> list[ZoneOut]:
+    """List all configured zones."""
+    async with request.app.state.sessionmaker() as session:
+        rows = (await session.scalars(select(Zone).order_by(Zone.zone_id))).all()
+    return [ZoneOut.model_validate(row) for row in rows]
 
 
-@router.put("/zones/{zone_id}", response_model=ZoneOut)
-async def edit_zone(zone_id: int, payload: ZoneIn, db: AsyncSession = Depends(get_db)) -> ZoneOut:
-    zone = await get_zone(db, zone_id)
-    if zone is None:
+@router.post("/", response_model=ZoneOut)
+async def create_zone(zone: ZoneIn, request: Request) -> ZoneOut:
+    """Create a new transit zone."""
+    async with request.app.state.sessionmaker() as session:
+        row = Zone(
+            zone_id=zone.zone_id,
+            name=zone.name,
+            restricted=zone.restricted,
+            polygon_json=json.dumps(zone.polygon),
+        )
+        session.add(row)
+        await session.commit()
+        await session.refresh(row)
+    return ZoneOut.model_validate(row)
+
+
+@router.get("/{zone_id}", response_model=ZoneOut)
+async def get_zone(zone_id: str, request: Request) -> ZoneOut:
+    """Return one zone by its external zone ID."""
+    async with request.app.state.sessionmaker() as session:
+        row = await session.scalar(select(Zone).where(Zone.zone_id == zone_id))
+    if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Zone not found")
-    zone = await update_zone(db, zone, payload)
-    return ZoneOut.model_validate(zone)
+    return ZoneOut.model_validate(row)
 
 
-@router.delete("/zones/{zone_id}", response_model=MessageResponse)
-async def remove_zone(zone_id: int, db: AsyncSession = Depends(get_db)) -> MessageResponse:
-    zone = await get_zone(db, zone_id)
-    if zone is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Zone not found")
-    await delete_zone(db, zone)
-    return MessageResponse(message="zone deleted")
+@router.delete("/{zone_id}", response_model=MessageResponse)
+async def delete_zone(zone_id: str, request: Request) -> MessageResponse:
+    """Delete one zone by its external zone ID."""
+    async with request.app.state.sessionmaker() as session:
+        row = await session.scalar(select(Zone).where(Zone.zone_id == zone_id))
+        if row is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Zone not found")
+        await session.delete(row)
+        await session.commit()
+    return MessageResponse(message="ok")

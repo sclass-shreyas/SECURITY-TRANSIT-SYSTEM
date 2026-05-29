@@ -1,28 +1,41 @@
-from pathlib import Path
+from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import FileResponse
-from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime
+from typing import Any
 
-from backend.database.deps import get_db
-from backend.services.alerts import get_alert
+from fastapi import APIRouter, HTTPException, Request, status
+from sqlalchemy import select
 
-router = APIRouter(prefix="/api/v1", tags=["clips"])
+from backend.models import Clip
+
+router = APIRouter(prefix="/api/v1/clips", tags=["clips"])
 
 
-@router.get("/clips/{alert_id}")
-async def read_clip(
-    alert_id: str,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-) -> FileResponse:
-    alert = await get_alert(db, alert_id)
-    if alert is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert not found")
+def _clip_to_dict(clip: Clip) -> dict[str, Any]:
+    """Serialize a clip ORM row to an API dictionary."""
+    created_at: datetime = clip.created_at
+    return {
+        "id": clip.id,
+        "alert_id": clip.alert_id,
+        "file_path": clip.file_path,
+        "duration_seconds": clip.duration_seconds,
+        "created_at": created_at,
+    }
 
-    clip_name = alert.clip_path or f"{alert.alert_id}.mp4"
-    clip_path = Path(clip_name)
-    clip_file = clip_path if clip_path.is_absolute() else (Path(request.app.state.settings.CLIPS_BASE_DIR) / clip_path).resolve()
-    if not clip_file.exists() or not clip_file.is_file():
+
+@router.get("/")
+async def list_clips(request: Request) -> list[dict[str, Any]]:
+    """List all stored alert clips."""
+    async with request.app.state.sessionmaker() as session:
+        rows = (await session.scalars(select(Clip).order_by(Clip.created_at.desc()))).all()
+    return [_clip_to_dict(row) for row in rows]
+
+
+@router.get("/{alert_id}")
+async def get_clip(alert_id: str, request: Request) -> dict[str, Any]:
+    """Return the clip associated with an alert ID."""
+    async with request.app.state.sessionmaker() as session:
+        row = await session.scalar(select(Clip).where(Clip.alert_id == alert_id))
+    if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Clip not found")
-    return FileResponse(path=str(clip_file), media_type="video/mp4")
+    return _clip_to_dict(row)
