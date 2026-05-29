@@ -9,7 +9,7 @@ from uuid import uuid4
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 from backend.config import Settings, get_settings
 from backend.database import create_engine_and_sessionmaker
@@ -87,6 +87,7 @@ def _install_middleware(app: FastAPI) -> None:
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
+    """Create and configure the FastAPI backend application."""
     settings = settings or get_settings()
 
     @asynccontextmanager
@@ -130,6 +131,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(zones_router)
     app.include_router(clips_router)
     app.include_router(stats_router)
+
+    @app.get("/", response_class=FileResponse, include_in_schema=False)
+    async def serve_dashboard() -> FileResponse:
+        """Serve the backend-hosted operations dashboard."""
+        return FileResponse(Path(__file__).resolve().parent / "static" / "index.html")
+
+    @app.get("/dashboard", response_class=FileResponse, include_in_schema=False)
+    async def serve_dashboard_alias() -> FileResponse:
+        """Serve the dashboard from a named alias route."""
+        return await serve_dashboard()
 
     # Compatibility aliases for the existing detector HTTP publisher.
     app.add_api_route("/events", ingest_event, methods=["POST"], response_model=MessageResponse)

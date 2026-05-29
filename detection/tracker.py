@@ -10,11 +10,16 @@ from deep_sort_realtime.deepsort_tracker import DeepSort
 
 class ObjectTracker:
     """Track detections and return confirmed tracked objects."""
-    
+
     def __init__(self) -> None:
-        """Initialize DeepSORT tracker with balanced defaults."""
-        self.tracker = DeepSort(max_age=30, n_init=2)
-        self._confidence_cache: dict[int, float] = {}
+     self.tracker = DeepSort(
+        max_age=60,
+        n_init=3,
+        max_cosine_distance=0.3,
+    )
+     self._confidence_cache: dict[int, float] = {}
+    
+
 
     def update(self, detections: list[dict[str, Any]], frame: np.ndarray) -> list[dict[str, Any]]:
         """Update tracker state and return confirmed tracks."""

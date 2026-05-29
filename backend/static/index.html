@@ -8,13 +8,22 @@
     :root {
       color-scheme: dark;
       --bg: #0f1117;
-      --panel: #1a1d27;
-      --line: #2b3142;
+      --surface: #171b24;
+      --panel: #1f2430;
+      --panel-soft: #151923;
+      --line: #303746;
       --text: #e2e8f0;
       --muted: #94a3b8;
+      --quiet: #64748b;
       --accent: #6366f1;
+      --accent-strong: #818cf8;
+      --danger: #ef4444;
+      --warn: #f59e0b;
+      --ok: #22c55e;
     }
+
     * { box-sizing: border-box; }
+
     body {
       min-width: 1024px;
       margin: 0;
@@ -22,42 +31,385 @@
       color: var(--text);
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
-    .shell { width: min(1180px, calc(100vw - 48px)); margin: 24px auto; border: 1px solid var(--line); background: var(--panel); }
-    header { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px; border-bottom: 1px solid var(--line); }
-    h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: 0; }
-    .status { display: flex; gap: 12px; align-items: center; color: var(--muted); font-weight: 600; }
-    .dot { width: 12px; height: 12px; border-radius: 50%; background: #f59e0b; box-shadow: 0 0 0 4px rgba(245,158,11,.12); }
-    .dot.ok { background: #22c55e; box-shadow: 0 0 0 4px rgba(34,197,94,.12); }
-    .dot.err { background: #ef4444; box-shadow: 0 0 0 4px rgba(239,68,68,.12); }
-    .stats { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--line); }
-    .stat { padding: 18px 22px; border-right: 1px solid var(--line); min-height: 92px; }
+
+    button, select {
+      font: inherit;
+    }
+
+    button {
+      border: 1px solid var(--line);
+      background: var(--panel-soft);
+      color: var(--text);
+      min-height: 36px;
+      padding: 0 12px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    button:hover { border-color: var(--accent-strong); }
+    button.primary { background: var(--accent); border-color: var(--accent); color: white; font-weight: 700; }
+    button:disabled { cursor: wait; opacity: .65; }
+
+    .shell {
+      width: min(1240px, calc(100vw - 48px));
+      margin: 24px auto;
+      border: 1px solid var(--line);
+      background: var(--surface);
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .brand {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .status {
+      display: inline-flex;
+      min-height: 36px;
+      gap: 10px;
+      align-items: center;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel-soft);
+      color: var(--muted);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: var(--warn);
+      box-shadow: 0 0 0 4px rgba(245, 158, 11, .14);
+    }
+
+    .dot.ok { background: var(--ok); box-shadow: 0 0 0 4px rgba(34, 197, 94, .14); }
+    .dot.err { background: var(--danger); box-shadow: 0 0 0 4px rgba(239, 68, 68, .14); }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      border-bottom: 1px solid var(--line);
+    }
+
+    .stat {
+      min-height: 98px;
+      padding: 18px 22px;
+      border-right: 1px solid var(--line);
+    }
+
     .stat:last-child { border-right: 0; }
-    .label { color: var(--muted); font-size: 12px; text-transform: uppercase; font-weight: 700; }
-    .value { margin-top: 10px; font-size: 28px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    section { padding: 20px 22px; border-bottom: 1px solid var(--line); }
-    section:last-child { border-bottom: 0; }
-    .section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-    h2 { margin: 0; font-size: 14px; letter-spacing: 0; text-transform: uppercase; }
-    .rule { flex: 1; height: 1px; background: var(--line); margin-left: 14px; }
-    .reconnect { color: #f59e0b; font-size: 13px; display: none; }
-    .feed { display: grid; gap: 8px; max-height: 260px; overflow: auto; }
-    .feed-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #121620; border: 1px solid var(--line); }
-    .badge { display: inline-flex; min-width: 70px; justify-content: center; padding: 4px 8px; border-radius: 4px; color: #fff; font-size: 12px; font-weight: 800; text-transform: uppercase; }
-    .mono { font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace; }
+
+    .label {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      font-weight: 800;
+    }
+
+    .value {
+      margin-top: 10px;
+      font-size: 29px;
+      font-weight: 850;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(320px, .65fr);
+      gap: 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    section {
+      padding: 20px 22px;
+    }
+
+    .grid section:first-child {
+      border-right: 1px solid var(--line);
+    }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 14px;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    .head-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .reconnect {
+      color: var(--warn);
+      font-size: 13px;
+      display: none;
+    }
+
+    .feed {
+      display: grid;
+      gap: 8px;
+      max-height: 260px;
+      overflow: auto;
+    }
+
+    .feed-row {
+      display: grid;
+      grid-template-columns: 84px minmax(110px, 1fr) 92px 72px 74px;
+      align-items: center;
+      gap: 10px;
+      min-height: 43px;
+      padding: 9px 10px;
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .feed-row:hover,
+    tbody tr:hover {
+      border-color: rgba(129, 140, 248, .7);
+      background: #181d28;
+    }
+
+    .badge {
+      display: inline-flex;
+      width: 76px;
+      justify-content: center;
+      padding: 4px 8px;
+      border-radius: 4px;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 850;
+      text-transform: uppercase;
+    }
+
+    .mono {
+      font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+    }
+
     .muted { color: var(--muted); }
-    .filters { display: flex; gap: 10px; }
-    select { min-width: 140px; background: #121620; color: var(--text); border: 1px solid var(--line); padding: 8px 10px; outline: none; }
-    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    th, td { padding: 12px 10px; border-bottom: 1px solid var(--line); text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    th { color: var(--muted); font-size: 12px; text-transform: uppercase; }
-    tbody tr:hover { background: #151925; }
+    .quiet { color: var(--quiet); }
+
+    .panel {
+      min-height: 260px;
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 14px;
+    }
+
+    .detail-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .detail-title strong {
+      font-size: 17px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      background: #111620;
+      border-radius: 6px;
+      padding: 10px;
+      min-height: 66px;
+    }
+
+    .metric .label { font-size: 11px; }
+    .metric .metric-value { margin-top: 6px; font-size: 16px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .wide { grid-column: 1 / -1; }
+
+    .zones {
+      display: grid;
+      gap: 8px;
+      max-height: 182px;
+      overflow: auto;
+    }
+
+    .zone-row {
+      display: grid;
+      grid-template-columns: minmax(80px, 1fr) 92px;
+      gap: 10px;
+      align-items: center;
+      padding: 9px 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #111620;
+    }
+
+    .zone-name {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-width: 0;
+    }
+
+    .pill {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 24px;
+      padding: 0 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      border: 1px solid var(--line);
+    }
+
+    .pill.restricted { color: #fecaca; background: rgba(239, 68, 68, .13); border-color: rgba(239, 68, 68, .35); }
+    .pill.normal { color: #bbf7d0; background: rgba(34, 197, 94, .12); border-color: rgba(34, 197, 94, .32); }
+
+    .table-section {
+      border-bottom: 0;
+    }
+
+    .table-controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    select {
+      min-width: 144px;
+      min-height: 36px;
+      background: var(--panel-soft);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 0 10px;
+      outline: none;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0 8px;
+      table-layout: fixed;
+    }
+
+    th, td {
+      padding: 11px 10px;
+      text-align: left;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      font-weight: 850;
+    }
+
+    tbody tr {
+      background: var(--panel-soft);
+      outline: 1px solid var(--line);
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    tbody td:first-child { border-radius: 6px 0 0 6px; }
+    tbody td:last-child { border-radius: 0 6px 6px 0; }
+
+    .empty, .error {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 116px;
+      border: 1px dashed var(--line);
+      border-radius: 6px;
+      color: var(--muted);
+      text-align: center;
+      padding: 18px;
+      background: rgba(15, 17, 23, .45);
+    }
+
+    .error { color: #fecaca; border-color: rgba(239, 68, 68, .45); }
+
+    .toast {
+      position: fixed;
+      right: 22px;
+      bottom: 22px;
+      display: none;
+      max-width: 360px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #111620;
+      color: var(--text);
+      box-shadow: 0 18px 48px rgba(0, 0, 0, .35);
+    }
   </style>
 </head>
 <body>
   <main class="shell">
     <header>
-      <h1>Smart Transit Security</h1>
-      <div class="status"><span>P3</span><span class="dot" id="statusDot"></span></div>
+      <div class="brand">
+        <h1>Smart Transit Security</h1>
+        <div class="subtitle">Live operations dashboard - backend hosted</div>
+      </div>
+      <div class="header-actions">
+        <button class="primary" id="demoButton" type="button">Load Demo Alerts</button>
+        <button id="refreshButton" type="button">Refresh</button>
+        <div class="status"><span id="serviceLabel">P3 Backend</span><span class="dot" id="statusDot"></span></div>
+      </div>
     </header>
 
     <div class="stats">
@@ -67,131 +419,410 @@
       <div class="stat"><div class="label">Top Alert Type</div><div class="value" id="topType">-</div></div>
     </div>
 
-    <section>
-      <div class="section-head"><h2>Live Feed</h2><div class="rule"></div><span class="reconnect" id="reconnect">Reconnecting...</span></div>
-      <div class="feed" id="feed"></div>
-    </section>
+    <div class="grid">
+      <section>
+        <div class="section-head">
+          <div class="head-left"><h2>Live Feed</h2><span class="reconnect" id="reconnect">Reconnecting...</span></div>
+          <span class="muted" id="feedCount">0 live items</span>
+        </div>
+        <div class="feed" id="feed">
+          <div class="empty">Waiting for alerts from the analytics pipeline or demo controls.</div>
+        </div>
+      </section>
 
-    <section>
+      <section>
+        <div class="section-head"><h2>Incident Details</h2><span class="muted" id="selectedLabel">No selection</span></div>
+        <div class="panel" id="detailsPanel">
+          <div class="empty">Select an alert from the feed or table to inspect metadata.</div>
+        </div>
+      </section>
+    </div>
+
+    <div class="grid">
+      <section>
+        <div class="section-head"><h2>Zone Overview</h2><span class="muted" id="zoneCount">Loading zones</span></div>
+        <div class="zones" id="zonesList">
+          <div class="empty">Loading configured zones...</div>
+        </div>
+      </section>
+
+      <section>
+        <div class="section-head"><h2>System State</h2><span class="muted mono" id="lastUpdated">-</span></div>
+        <div class="panel">
+          <div class="detail-grid">
+            <div class="metric"><div class="label">Health</div><div class="metric-value" id="healthText">Checking</div></div>
+            <div class="metric"><div class="label">SSE Stream</div><div class="metric-value" id="streamText">Connecting</div></div>
+            <div class="metric wide"><div class="label">Demo Coverage</div><div class="metric-value">Loitering - Unattended Object - Crowd Surge</div></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <section class="table-section">
       <div class="section-head">
         <h2>All Alerts</h2>
-        <div class="filters">
+        <div class="table-controls">
           <select id="typeFilter"><option value="">All types</option></select>
           <select id="severityFilter"><option value="">All severities</option></select>
         </div>
       </div>
       <table>
-        <thead><tr><th>Type</th><th>Severity</th><th>Zone</th><th>Object ID</th><th>Timestamp</th></tr></thead>
+        <thead>
+          <tr>
+            <th style="width: 18%;">Type</th>
+            <th style="width: 13%;">Severity</th>
+            <th style="width: 14%;">Zone</th>
+            <th style="width: 12%;">Object ID</th>
+            <th style="width: 18%;">Frame</th>
+            <th>Timestamp</th>
+          </tr>
+        </thead>
         <tbody id="alertsBody"></tbody>
       </table>
+      <div id="tableEmpty" class="empty">No alerts yet. Load demo alerts or start the analytics pipeline.</div>
     </section>
   </main>
 
+  <div class="toast" id="toast"></div>
+
   <script>
-    const state = { alerts: [] };
+    const state = {
+      alerts: [],
+      feed: [],
+      zones: [],
+      selectedAlertId: null,
+      streamConnected: false
+    };
+
     const severityColors = { high: "#ef4444", medium: "#f59e0b", low: "#22c55e" };
 
+    function byId(id) {
+      return document.getElementById(id);
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "\"": "&quot;",
+        "'": "&#39;"
+      }[char]));
+    }
+
     function relativeTime(value) {
-      const seconds = Math.max(0, Math.round((Date.now() - new Date(value).getTime()) / 1000));
+      const timestamp = new Date(value).getTime();
+      if (Number.isNaN(timestamp)) return "-";
+      const seconds = Math.max(0, Math.round((Date.now() - timestamp) / 1000));
       if (seconds < 60) return `${seconds}s ago`;
       const minutes = Math.round(seconds / 60);
       if (minutes < 60) return `${minutes}m ago`;
       return `${Math.round(minutes / 60)}h ago`;
     }
 
-    async function fetchJson(url) {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(response.statusText);
+    function localTime(value) {
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? "-" : date.toLocaleString();
+    }
+
+    function badge(severity) {
+      const normalized = String(severity || "unknown").toLowerCase();
+      const color = severityColors[normalized] || "#64748b";
+      return `<span class="badge" style="background:${color}">${escapeHtml(normalized)}</span>`;
+    }
+
+    function showToast(message) {
+      const toast = byId("toast");
+      toast.textContent = message;
+      toast.style.display = "block";
+      window.clearTimeout(showToast.timer);
+      showToast.timer = window.setTimeout(() => {
+        toast.style.display = "none";
+      }, 3200);
+    }
+
+    async function fetchJson(url, options) {
+      const response = await fetch(url, options);
+      if (!response.ok) {
+        const body = await response.text();
+        throw new Error(body || response.statusText);
+      }
       return response.json();
     }
 
     async function updateHealth() {
-      const dot = document.getElementById("statusDot");
+      const dot = byId("statusDot");
       try {
         const health = await fetchJson("/health/");
-        dot.className = `dot ${health.status === "ok" ? "ok" : ""}`;
+        const ok = health.status === "ok";
+        dot.className = `dot ${ok ? "ok" : ""}`;
+        byId("healthText").textContent = ok ? "Ready" : "Starting";
+        byId("serviceLabel").textContent = `${health.service || "backend"} - ${health.status}`;
       } catch {
         dot.className = "dot err";
+        byId("healthText").textContent = "Offline";
+        byId("serviceLabel").textContent = "backend - error";
       }
     }
 
     async function updateStats() {
       const stats = await fetchJson("/api/v1/stats/");
-      document.getElementById("totalAlerts").textContent = stats.total_alerts;
-      document.getElementById("highSeverity").textContent = stats.high_severity_count;
-      document.getElementById("topZone").textContent = stats.most_active_zone || "-";
+      byId("totalAlerts").textContent = stats.total_alerts;
+      byId("highSeverity").textContent = stats.high_severity_count;
+      byId("topZone").textContent = stats.most_active_zone || "-";
       const topType = Object.entries(stats.by_type || {}).sort((a, b) => b[1] - a[1])[0];
-      document.getElementById("topType").textContent = topType ? topType[0] : "-";
+      byId("topType").textContent = topType ? topType[0] : "-";
+      byId("lastUpdated").textContent = new Date().toLocaleTimeString();
     }
 
-    function badge(severity) {
-      const color = severityColors[severity] || "#64748b";
-      return `<span class="badge" style="background:${color}">${severity}</span>`;
+    async function updateZones() {
+      try {
+        state.zones = await fetchJson("/api/v1/zones/");
+        renderZones();
+      } catch {
+        byId("zonesList").innerHTML = `<div class="error">Unable to load zones.</div>`;
+        byId("zoneCount").textContent = "Zone load failed";
+      }
     }
 
-    function renderAlerts() {
-      const type = document.getElementById("typeFilter").value;
-      const severity = document.getElementById("severityFilter").value;
-      const rows = state.alerts.filter(a => (!type || a.alert_type === type) && (!severity || a.severity === severity));
-      document.getElementById("alertsBody").innerHTML = rows.map(a => `
-        <tr>
-          <td>${a.alert_type}</td>
-          <td>${badge(a.severity)}</td>
-          <td class="mono">${a.zone}</td>
-          <td class="mono">${a.object_id}</td>
-          <td class="mono">${new Date(a.timestamp).toLocaleString()}</td>
-        </tr>`).join("");
-    }
+    function renderZones() {
+      byId("zoneCount").textContent = `${state.zones.length} zones`;
+      if (!state.zones.length) {
+        byId("zonesList").innerHTML = `<div class="empty">No configured zones found.</div>`;
+        return;
+      }
 
-    function syncFilters() {
-      const typeFilter = document.getElementById("typeFilter");
-      const severityFilter = document.getElementById("severityFilter");
-      const currentType = typeFilter.value;
-      const currentSeverity = severityFilter.value;
-      const types = [...new Set(state.alerts.map(a => a.alert_type))].sort();
-      const severities = [...new Set(state.alerts.map(a => a.severity))].sort();
-      typeFilter.innerHTML = `<option value="">All types</option>${types.map(v => `<option value="${v}">${v}</option>`).join("")}`;
-      severityFilter.innerHTML = `<option value="">All severities</option>${severities.map(v => `<option value="${v}">${v}</option>`).join("")}`;
-      typeFilter.value = currentType;
-      severityFilter.value = currentSeverity;
+      byId("zonesList").innerHTML = state.zones.map(zone => `
+        <div class="zone-row">
+          <div class="zone-name">
+            <strong>${escapeHtml(zone.name)}</strong>
+            <span class="mono muted">${escapeHtml(zone.zone_id)}</span>
+          </div>
+          <span class="pill ${zone.restricted ? "restricted" : "normal"}">${zone.restricted ? "Restricted" : "Normal"}</span>
+        </div>
+      `).join("");
     }
 
     async function updateAlerts() {
-      state.alerts = await fetchJson("/alerts?limit=100");
-      syncFilters();
-      renderAlerts();
+      try {
+        state.alerts = await fetchJson("/alerts?limit=100");
+        syncFilters();
+        renderAlerts();
+        if (state.selectedAlertId) {
+          const selected = state.alerts.find(alert => alert.alert_id === state.selectedAlertId);
+          if (selected) renderDetails(selected);
+        }
+      } catch {
+        byId("alertsBody").innerHTML = "";
+        byId("tableEmpty").className = "error";
+        byId("tableEmpty").textContent = "Unable to load alerts.";
+      }
+    }
+
+    function syncFilters() {
+      const typeFilter = byId("typeFilter");
+      const severityFilter = byId("severityFilter");
+      const currentType = typeFilter.value;
+      const currentSeverity = severityFilter.value;
+      const types = [...new Set(state.alerts.map(alert => alert.alert_type).filter(Boolean))].sort();
+      const severities = [...new Set(state.alerts.map(alert => alert.severity).filter(Boolean))].sort();
+      typeFilter.innerHTML = `<option value="">All types</option>${types.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("")}`;
+      severityFilter.innerHTML = `<option value="">All severities</option>${severities.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("")}`;
+      typeFilter.value = types.includes(currentType) ? currentType : "";
+      severityFilter.value = severities.includes(currentSeverity) ? currentSeverity : "";
+    }
+
+    function filteredAlerts() {
+      const type = byId("typeFilter").value;
+      const severity = byId("severityFilter").value;
+      return state.alerts.filter(alert => (!type || alert.alert_type === type) && (!severity || alert.severity === severity));
+    }
+
+    function renderAlerts() {
+      const rows = filteredAlerts();
+      byId("tableEmpty").style.display = rows.length ? "none" : "flex";
+      byId("tableEmpty").className = "empty";
+      byId("tableEmpty").textContent = state.alerts.length ? "No alerts match the selected filters." : "No alerts yet. Load demo alerts or start the analytics pipeline.";
+      byId("alertsBody").innerHTML = rows.map(alert => `
+        <tr data-alert-id="${escapeHtml(alert.alert_id)}">
+          <td>${escapeHtml(alert.alert_type)}</td>
+          <td>${badge(alert.severity)}</td>
+          <td class="mono">${escapeHtml(alert.zone)}</td>
+          <td class="mono">${escapeHtml(alert.object_id)}</td>
+          <td class="mono">${escapeHtml(alert.metadata?.frame_id ?? "-")}</td>
+          <td class="mono">${escapeHtml(localTime(alert.timestamp))}</td>
+        </tr>
+      `).join("");
+
+      byId("alertsBody").querySelectorAll("tr").forEach(row => {
+        row.addEventListener("click", () => {
+          const alert = state.alerts.find(item => item.alert_id === row.dataset.alertId);
+          if (alert) selectAlert(alert);
+        });
+      });
+    }
+
+    function selectAlert(alert) {
+      state.selectedAlertId = alert.alert_id;
+      renderDetails(alert);
+    }
+
+    function renderDetails(alert) {
+      const metadata = alert.metadata || {};
+      byId("selectedLabel").textContent = alert.alert_id.slice(0, 8);
+      byId("detailsPanel").innerHTML = `
+        <div class="detail-title">
+          <strong>${escapeHtml(alert.alert_type)}</strong>
+          ${badge(alert.severity)}
+        </div>
+        <div class="detail-grid">
+          <div class="metric"><div class="label">Zone</div><div class="metric-value mono">${escapeHtml(alert.zone)}</div></div>
+          <div class="metric"><div class="label">Object ID</div><div class="metric-value mono">${escapeHtml(alert.object_id)}</div></div>
+          <div class="metric"><div class="label">Dwell Seconds</div><div class="metric-value mono">${escapeHtml(metadata.dwell_seconds ?? 0)}</div></div>
+          <div class="metric"><div class="label">Confidence</div><div class="metric-value mono">${escapeHtml(metadata.confidence ?? 0)}</div></div>
+          <div class="metric"><div class="label">Frame ID</div><div class="metric-value mono">${escapeHtml(metadata.frame_id ?? "-")}</div></div>
+          <div class="metric"><div class="label">Person Count</div><div class="metric-value mono">${escapeHtml(metadata.person_count ?? 0)}</div></div>
+          <div class="metric wide"><div class="label">Clip Path</div><div class="metric-value mono">${escapeHtml(alert.clip_path || "No clip attached")}</div></div>
+          <div class="metric wide"><div class="label">Timestamp</div><div class="metric-value mono">${escapeHtml(localTime(alert.timestamp))}</div></div>
+        </div>
+      `;
     }
 
     function addFeed(alert) {
-      const feed = document.getElementById("feed");
-      const row = document.createElement("div");
-      row.className = "feed-row";
-      row.innerHTML = `${badge(alert.severity)} <strong>${alert.alert_type}</strong><span class="mono">${alert.zone}</span><span class="mono">ID ${alert.object_id}</span><span class="muted">${relativeTime(alert.timestamp)}</span>`;
-      feed.prepend(row);
-      while (feed.children.length > 50) feed.lastChild.remove();
+      if (!alert || alert === "ping") return;
+      state.feed = [alert, ...state.feed.filter(item => item.alert_id !== alert.alert_id)].slice(0, 50);
+      renderFeed();
+    }
+
+    function renderFeed() {
+      byId("feedCount").textContent = `${state.feed.length} live items`;
+      if (!state.feed.length) {
+        byId("feed").innerHTML = `<div class="empty">Waiting for alerts from the analytics pipeline or demo controls.</div>`;
+        return;
+      }
+
+      byId("feed").innerHTML = state.feed.map(alert => `
+        <div class="feed-row" data-alert-id="${escapeHtml(alert.alert_id)}">
+          ${badge(alert.severity)}
+          <strong>${escapeHtml(alert.alert_type)}</strong>
+          <span class="mono">${escapeHtml(alert.zone)}</span>
+          <span class="mono">ID ${escapeHtml(alert.object_id)}</span>
+          <span class="muted">${escapeHtml(relativeTime(alert.timestamp))}</span>
+        </div>
+      `).join("");
+
+      byId("feed").querySelectorAll(".feed-row").forEach(row => {
+        row.addEventListener("click", () => {
+          const alert = state.feed.find(item => item.alert_id === row.dataset.alertId) ||
+            state.alerts.find(item => item.alert_id === row.dataset.alertId);
+          if (alert) selectAlert(alert);
+        });
+      });
     }
 
     function connectStream() {
-      const reconnect = document.getElementById("reconnect");
+      const reconnect = byId("reconnect");
       const source = new EventSource("/api/v1/stream");
+      source.onopen = () => {
+        state.streamConnected = true;
+        reconnect.style.display = "none";
+        byId("streamText").textContent = "Connected";
+      };
       source.onmessage = event => {
         reconnect.style.display = "none";
+        byId("streamText").textContent = "Connected";
         if (event.data === "ping") return;
-        addFeed(JSON.parse(event.data));
+        const alert = JSON.parse(event.data);
+        addFeed(alert);
         updateStats().catch(() => {});
+        updateAlerts().catch(() => {});
       };
-      source.onerror = () => { reconnect.style.display = "inline"; };
+      source.onerror = () => {
+        state.streamConnected = false;
+        reconnect.style.display = "inline";
+        byId("streamText").textContent = "Reconnecting";
+      };
     }
 
-    document.getElementById("typeFilter").addEventListener("change", renderAlerts);
-    document.getElementById("severityFilter").addEventListener("change", renderAlerts);
-    updateHealth();
-    updateStats().catch(() => {});
-    updateAlerts().catch(() => {});
+    function demoAlerts() {
+      const stamp = new Date();
+      const runId = stamp.toISOString().replace(/[-:.TZ]/g, "").slice(0, 14);
+      const baseTime = stamp.getTime();
+      return [
+        {
+          alert_id: `demo-loiter-${runId}`,
+          alert_type: "loitering",
+          severity: "medium",
+          timestamp: new Date(baseTime - 45000).toISOString(),
+          object_id: 101,
+          class_name: "person",
+          zone: "zone_001",
+          clip_path: `clips/demo_loitering_${runId}.avi`,
+          metadata: { dwell_seconds: 96.5, person_count: 1, confidence: 0.91, frame_id: 4201 }
+        },
+        {
+          alert_id: `demo-unatt-${runId}`,
+          alert_type: "unattended_object",
+          severity: "high",
+          timestamp: new Date(baseTime - 26000).toISOString(),
+          object_id: 204,
+          class_name: "bag",
+          zone: "zone_002",
+          clip_path: `clips/demo_unattended_${runId}.avi`,
+          metadata: { dwell_seconds: 181.2, person_count: 0, confidence: 0.88, frame_id: 4218 }
+        },
+        {
+          alert_id: `demo-crowd-${runId}`,
+          alert_type: "crowd_surge",
+          severity: "high",
+          timestamp: new Date(baseTime - 9000).toISOString(),
+          object_id: 0,
+          class_name: "crowd",
+          zone: "zone_002",
+          clip_path: `clips/demo_crowd_surge_${runId}.avi`,
+          metadata: { dwell_seconds: 0, person_count: 37, confidence: 0.94, frame_id: 4236 }
+        }
+      ];
+    }
+
+    async function loadDemoAlerts() {
+      const button = byId("demoButton");
+      button.disabled = true;
+      button.textContent = "Loading...";
+      try {
+        const alerts = demoAlerts();
+        for (const alert of alerts) {
+          await fetchJson("/alerts", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(alert)
+          });
+        }
+        await refreshAll();
+        showToast("Demo alerts loaded.");
+      } catch (error) {
+        showToast(`Demo load failed: ${error.message}`);
+      } finally {
+        button.disabled = false;
+        button.textContent = "Load Demo Alerts";
+      }
+    }
+
+    async function refreshAll() {
+      await Promise.allSettled([updateHealth(), updateStats(), updateZones(), updateAlerts()]);
+    }
+
+    byId("typeFilter").addEventListener("change", renderAlerts);
+    byId("severityFilter").addEventListener("change", renderAlerts);
+    byId("demoButton").addEventListener("click", loadDemoAlerts);
+    byId("refreshButton").addEventListener("click", () => refreshAll());
+
+    refreshAll();
     connectStream();
     setInterval(updateHealth, 10000);
     setInterval(() => updateStats().catch(() => {}), 10000);
     setInterval(() => updateAlerts().catch(() => {}), 30000);
+    setInterval(renderFeed, 5000);
   </script>
 </body>
 </html>
