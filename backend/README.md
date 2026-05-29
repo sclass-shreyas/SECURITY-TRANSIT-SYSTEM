@@ -1,51 +1,62 @@
-# Smart Transit Backend (P3)
+# Smart Transit Backend
 
-FastAPI backend for Smart Transit Security Surveillance with SQLite-first, PostgreSQL-ready SQLAlchemy models, JWT auth, REST APIs, and live WebSocket broadcasting.
+FastAPI backend for Smart Transit Security Surveillance with PostgreSQL-only SQLAlchemy models, Alembic migrations, REST APIs, and live WebSocket broadcasting.
 
 ## Run
 
-1. Install dependencies:
+1. Start PostgreSQL:
+
+```bash
+docker compose up -d postgres
+```
+
+The container initializes both `smart_transit` and `smart_transit_test`.
+
+2. Install dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-2. Copy environment file:
+3. Copy the backend environment file:
 
 ```bash
-cp .env.example .env
+cp backend/.env.example backend/.env
 ```
 
-3. Run DB migration:
+Set `TEST_DATABASE_URL` to the `smart_transit_test` database for migration verification.
+
+4. Run database migrations:
 
 ```bash
-alembic -c alembic.ini upgrade head
+alembic -c backend/alembic.ini upgrade head
 ```
 
-4. Start server:
+5. Start the backend:
 
 ```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+uvicorn backend.app:app --host 0.0.0.0 --port 8001 --reload
 ```
 
-## Default Admin
+## PostgreSQL Defaults
 
-- username: `admin`
-- password: `admin123`
-
-Change values in `.env` using `DEFAULT_ADMIN_USERNAME` and `DEFAULT_ADMIN_PASSWORD`.
+- `DATABASE_URL` must point to PostgreSQL with the `asyncpg` driver.
+- Alembic uses the same PostgreSQL URL from `backend/.env`.
+- SQLite is not supported.
 
 ## Key Endpoints
 
-- `POST /auth/login`
-- `POST /auth/refresh`
+- `GET /health`
+- `GET /ready`
+- `POST /api/v1/events`
+- `POST /api/v1/alerts`
 - `POST /events`
-- `POST /frame`
 - `POST /alerts`
-- `GET /alerts`
-- `GET /alerts/{alert_id}`
-- `GET /incidents`
-- `GET /incidents/{alert_id}`
+- `POST /frame`
+- `GET /api/v1/alerts`
+- `GET /api/v1/alerts/{alert_id}`
+- `GET /api/v1/incidents`
+- `GET /api/v1/incidents/{alert_id}`
 - `GET /zones`
 - `POST /zones`
 - `PUT /zones/{zone_id}`
@@ -53,7 +64,6 @@ Change values in `.env` using `DEFAULT_ADMIN_USERNAME` and `DEFAULT_ADMIN_PASSWO
 - `GET /clips/{alert_id}`
 - `GET /stats/summary`
 - `GET /stats/timeline`
-- `GET /health`
 - `WS /ws/live`
 
 ## Tests
@@ -61,3 +71,17 @@ Change values in `.env` using `DEFAULT_ADMIN_USERNAME` and `DEFAULT_ADMIN_PASSWO
 ```bash
 pytest -q
 ```
+
+## Migration Verification
+
+To verify the schema against PostgreSQL:
+
+```bash
+pytest backend/tests/test_migrations_postgresql.py -q
+```
+
+The test runs:
+
+1. `alembic upgrade head`
+2. `alembic downgrade base`
+3. `alembic upgrade head`
