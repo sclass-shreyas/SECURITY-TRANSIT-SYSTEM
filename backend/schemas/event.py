@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from datetime import datetime
+from uuid import UUID
+
 from pydantic import BaseModel
 
 
@@ -19,6 +22,10 @@ class DetectedObject(BaseModel):
 class EventIn(BaseModel):
     """Inbound detection event payload."""
 
+    event_id: UUID | None = None
+    correlation_id: UUID | None = None
+    schema_version: str = "1.0"
+    camera_id: UUID | None = None
     frame_id: int
-    timestamp: str
+    timestamp: datetime
     objects: list[DetectedObject]

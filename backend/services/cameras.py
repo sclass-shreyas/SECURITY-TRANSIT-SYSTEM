@@ -5,21 +5,29 @@ import logging
 from pathlib import Path
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.database import init_db
-from backend.models import Zone
+from backend.models.zone import Zone
+from backend.repositories.cameras import CameraRepository
 
 logger = logging.getLogger(__name__)
 
 
 async def ensure_default_camera(session: AsyncSession) -> None:
-    """Initialize tables and seed default zones when the database is empty."""
-    bind = session.bind
-    if not isinstance(bind, AsyncEngine):
-        raise RuntimeError("AsyncSession is not bound to an AsyncEngine")
+    """Seed the default camera and configured zones when the database is empty."""
+    settings = session.info.get("settings")
+    if settings is None:
+        raise RuntimeError("Session is missing application settings")
 
-    await init_db(bind)
+    bind = session.bind
+    if bind is None:
+        raise RuntimeError("AsyncSession is not bound to an engine")
+    if getattr(bind.dialect, "name", "") != "postgresql":
+        await init_db(bind)
+
+    camera_repo = CameraRepository(session)
+    await camera_repo.ensure_default_camera(settings)
 
     existing_zone = await session.scalar(select(Zone.id).limit(1))
     if existing_zone is not None:
@@ -41,7 +49,8 @@ async def ensure_default_camera(session: AsyncSession) -> None:
                 zone_id=zone_id,
                 name=zone_data["name"],
                 restricted=bool(zone_data.get("restricted", False)),
-                polygon_json=json.dumps(zone_data.get("polygon", [])),
+                zone_name=str(zone_data["name"]),
+                polygon_points_json=zone_data.get("polygon", []),
             )
         )
     await session.commit()

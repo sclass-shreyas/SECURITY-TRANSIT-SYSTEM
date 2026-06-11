@@ -5,12 +5,15 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 import cv2
 import numpy as np
 from fastapi import FastAPI, File, UploadFile, WebSocket, WebSocketDisconnect
 
 import config
+from event_publisher import EventPublisher
+from analytics_result_publisher import AnalyticsResultPublisher
 from alert_engine import AlertEngine
 from alert_publisher import AlertPublisher
 from crowd_density import CrowdDensityDetector
@@ -71,6 +74,8 @@ async def on_startup() -> None:
     app.state.unattended_object = UnattendedObjectDetector()
     app.state.theft_detector = TheftDetector()
     app.state.alert_engine = AlertEngine()
+    app.state.event_publisher = EventPublisher()
+    app.state.analytics_result_publisher = AnalyticsResultPublisher()
     app.state.firebase_notifier = FirebaseNotifier()
     app.state.alert_publisher = AlertPublisher()
     app.state.latest_frame = np.empty((0, 0, 3), dtype=np.uint8)
@@ -79,7 +84,11 @@ async def on_startup() -> None:
 @app.on_event("shutdown")
 async def on_shutdown() -> None:
     """Release outbound publisher resources."""
+    event_publisher: EventPublisher = app.state.event_publisher
+    result_publisher: AnalyticsResultPublisher = app.state.analytics_result_publisher
     publisher: AlertPublisher = app.state.alert_publisher
+    await event_publisher.close()
+    await result_publisher.close()
     await publisher.close()
 
 
@@ -110,6 +119,7 @@ async def receive_event(event: dict[str, Any]) -> dict[str, int | str]:
     unattended_object: UnattendedObjectDetector = app.state.unattended_object
     theft_detector: TheftDetector = app.state.theft_detector
     alert_engine: AlertEngine = app.state.alert_engine
+    analytics_result_publisher: AnalyticsResultPublisher = app.state.analytics_result_publisher
     firebase_notifier: FirebaseNotifier = app.state.firebase_notifier
     alert_publisher: AlertPublisher = app.state.alert_publisher
 
@@ -140,6 +150,29 @@ async def receive_event(event: dict[str, Any]) -> dict[str, int | str]:
                     },
                 }
             )
+
+    event_id = str(event.get("event_id") or uuid4())
+    event["event_id"] = event_id
+    event_publisher: EventPublisher = app.state.event_publisher
+    await event_publisher.publish(event)
+    for raw_alert in raw_alerts:
+        metadata = raw_alert.get("metadata", {})
+        await analytics_result_publisher.publish(
+            {
+                "event_id": event_id,
+                "detector_type": str(raw_alert.get("alert_type", "")),
+                "confidence": float(metadata.get("confidence", 0.0)),
+                "metadata": {
+                    "alert_type": str(raw_alert.get("alert_type", "")),
+                    "object_id": int(raw_alert.get("object_id", -1)),
+                    "class_name": str(raw_alert.get("class_name", "unknown")),
+                    "zone": str(raw_alert.get("zone", "")),
+                    "dwell_seconds": float(metadata.get("dwell_seconds", 0.0)),
+                    "person_count": int(metadata.get("person_count", 0)),
+                    "frame_id": int(metadata.get("frame_id", event.get("frame_id", -1))),
+                },
+            }
+        )
 
     finalized_alerts = await alert_engine.process(raw_alerts, event, frame)
 

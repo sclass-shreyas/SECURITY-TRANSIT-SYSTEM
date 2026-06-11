@@ -8,6 +8,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 import cv2
 
@@ -62,6 +63,7 @@ def _build_event(
         )
 
     return {
+        "event_id": str(uuid4()),
         "frame_id": frame_id,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "objects": payload_objects,

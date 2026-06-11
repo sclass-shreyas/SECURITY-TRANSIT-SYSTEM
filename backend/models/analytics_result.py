@@ -21,7 +21,7 @@ class AnalyticsResult(Base):
 
     result_id: Mapped[UUID] = mapped_column(GUID(), primary_key=True, default=uuid4)
     event_id: Mapped[UUID] = mapped_column(
-        GUID(), ForeignKey("events.event_id", ondelete="CASCADE"), nullable=False, index=True
+        GUID(), ForeignKey("events.event_id", ondelete="CASCADE"), nullable=False
     )
     detector_type: Mapped[str] = mapped_column(String(120), nullable=False)
     confidence: Mapped[float] = mapped_column(Float, nullable=False)

@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import json
-
 from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy import select
 
-from backend.models import Zone
+from backend.models.zone import Zone
 from backend.schemas.common import MessageResponse
 from backend.schemas.zone import ZoneIn, ZoneOut
 
@@ -16,7 +14,8 @@ router = APIRouter(prefix="/api/v1/zones", tags=["zones"])
 async def list_zones(request: Request) -> list[ZoneOut]:
     """List all configured zones."""
     async with request.app.state.sessionmaker() as session:
-        rows = (await session.scalars(select(Zone).order_by(Zone.zone_id))).all()
+        result = await session.execute(select(Zone).order_by(Zone.zone_id))
+        rows = result.scalars().all()
     return [ZoneOut.model_validate(row) for row in rows]
 
 
@@ -28,7 +27,8 @@ async def create_zone(zone: ZoneIn, request: Request) -> ZoneOut:
             zone_id=zone.zone_id,
             name=zone.name,
             restricted=zone.restricted,
-            polygon_json=json.dumps(zone.polygon),
+            zone_name=zone.zone_name,
+            polygon_points_json=zone.polygon_points_json or zone.polygon or [],
         )
         session.add(row)
         await session.commit()
@@ -40,7 +40,8 @@ async def create_zone(zone: ZoneIn, request: Request) -> ZoneOut:
 async def get_zone(zone_id: str, request: Request) -> ZoneOut:
     """Return one zone by its external zone ID."""
     async with request.app.state.sessionmaker() as session:
-        row = await session.scalar(select(Zone).where(Zone.zone_id == zone_id))
+        result = await session.execute(select(Zone).where(Zone.zone_id == zone_id))
+        row = result.scalar_one_or_none()
     if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Zone not found")
     return ZoneOut.model_validate(row)

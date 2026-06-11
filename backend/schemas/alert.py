@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from typing import Any
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
@@ -19,13 +20,16 @@ class AlertMetadata(BaseModel):
 class AlertIn(BaseModel):
     """Inbound alert payload from the P2 analytics pipeline."""
 
-    alert_id: str
+    alert_id: UUID | None = None
+    event_id: UUID | None = None
     alert_type: str
     severity: str
-    timestamp: str
+    timestamp: datetime
     object_id: int
     class_name: str
     zone: str
+    status: str = "open"
+    resolved_at: datetime | None = None
     clip_path: str | None = None
     metadata: AlertMetadata
 
@@ -35,8 +39,10 @@ class AlertOut(BaseModel):
 
     id: int
     alert_id: str
+    event_id: str | None = None
     alert_type: str
     severity: str
+    status: str = "open"
     object_id: int
     class_name: str
     zone: str
@@ -44,6 +50,7 @@ class AlertOut(BaseModel):
     metadata: AlertMetadata
     timestamp: datetime
     created_at: datetime
+    resolved_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -54,21 +61,31 @@ class AlertOut(BaseModel):
         if isinstance(data, dict):
             metadata_json = data.get("metadata_json")
             if "metadata" not in data and metadata_json is not None:
-                data["metadata"] = json.loads(metadata_json)
+                data["metadata"] = json.loads(metadata_json) if isinstance(metadata_json, str) else metadata_json
+            if "alert_id" in data and data.get("alert_id") is not None:
+                data["alert_id"] = str(data["alert_id"])
+            if "event_id" in data and data.get("event_id") is not None:
+                data["event_id"] = str(data["event_id"])
+            if "id" not in data or data.get("id") is None:
+                data["id"] = 0
             return data
 
         if hasattr(data, "metadata_json"):
+            metadata_json = data.metadata_json
             return {
-                "id": data.id,
-                "alert_id": data.alert_id,
+                "id": getattr(data, "id", 0) or 0,
+                "alert_id": str(data.alert_id),
+                "event_id": str(getattr(data, "event_id", None)) if getattr(data, "event_id", None) is not None else None,
                 "alert_type": data.alert_type,
                 "severity": data.severity,
+                "status": getattr(data, "status", "open"),
                 "object_id": data.object_id,
                 "class_name": data.class_name,
                 "zone": data.zone,
                 "clip_path": data.clip_path,
-                "metadata": json.loads(data.metadata_json),
+                "metadata": json.loads(metadata_json) if isinstance(metadata_json, str) else metadata_json,
                 "timestamp": data.timestamp,
                 "created_at": data.created_at,
+                "resolved_at": getattr(data, "resolved_at", None),
             }
         return data

@@ -14,6 +14,7 @@ from event_publisher import EventPublisher
 def sample_event() -> dict:
     """Provide a valid event payload following expected schema."""
     return {
+        "event_id": "11111111-1111-4111-8111-111111111111",
         "frame_id": 1,
         "timestamp": "2026-01-01T00:00:00+00:00",
         "objects": [
@@ -85,7 +86,7 @@ async def test_publish_does_not_raise_on_timeout(
 
 def test_event_schema_contains_required_keys(sample_event: dict) -> None:
     """Event payload should contain all required top-level and object keys."""
-    assert set(sample_event.keys()) == {"frame_id", "timestamp", "objects"}
+    assert set(sample_event.keys()) == {"event_id", "frame_id", "timestamp", "objects"}
     assert len(sample_event["objects"]) == 1
     assert set(sample_event["objects"][0].keys()) == {
         "object_id",

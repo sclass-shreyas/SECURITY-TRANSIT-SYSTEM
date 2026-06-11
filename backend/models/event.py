@@ -21,13 +21,13 @@ class Event(Base):
     )
 
     event_id: Mapped[UUID] = mapped_column(GUID(), primary_key=True, default=uuid4)
-    correlation_id: Mapped[UUID] = mapped_column(GUID(), nullable=False, index=True, default=uuid4)
+    correlation_id: Mapped[UUID] = mapped_column(GUID(), nullable=False, default=uuid4)
     schema_version: Mapped[str] = mapped_column(String(20), nullable=False, default="1.0")
     camera_id: Mapped[UUID] = mapped_column(
-        GUID(), ForeignKey("cameras.camera_id", ondelete="RESTRICT"), nullable=False, index=True
+        GUID(), ForeignKey("cameras.camera_id", ondelete="RESTRICT"), nullable=False
     )
-    frame_id: Mapped[int] = mapped_column(Integer, index=True, nullable=False)
-    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True, nullable=False)
+    frame_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     raw_payload: Mapped[dict[str, Any]] = mapped_column(JSONBType(), nullable=False)
 
     camera = relationship("Camera", back_populates="events")

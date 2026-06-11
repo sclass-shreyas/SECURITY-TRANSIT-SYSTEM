@@ -23,13 +23,13 @@ class Alert(Base):
 
     alert_id: Mapped[UUID] = mapped_column(GUID(), primary_key=True, default=uuid4)
     event_id: Mapped[UUID] = mapped_column(
-        GUID(), ForeignKey("events.event_id", ondelete="CASCADE"), nullable=False, index=True
+        GUID(), ForeignKey("events.event_id", ondelete="CASCADE"), nullable=False
     )
     alert_type: Mapped[str] = mapped_column(String(100), index=True, nullable=False)
-    severity: Mapped[str] = mapped_column(String(30), index=True, nullable=False)
-    status: Mapped[str] = mapped_column(String(30), index=True, nullable=False, default="open")
+    severity: Mapped[str] = mapped_column(String(30), nullable=False)
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default="open")
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), index=True, nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     object_id: Mapped[int] = mapped_column(Integer, index=True, nullable=False, default=0)

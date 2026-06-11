@@ -6,7 +6,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy import select
 
-from backend.models import Clip
+from backend.models.clip import Clip
 
 router = APIRouter(prefix="/api/v1/clips", tags=["clips"])
 
@@ -17,8 +17,9 @@ def _clip_to_dict(clip: Clip) -> dict[str, Any]:
     return {
         "id": clip.id,
         "alert_id": clip.alert_id,
-        "file_path": clip.file_path,
-        "duration_seconds": clip.duration_seconds,
+        "clip_path": clip.clip_path,
+        "file_path": clip.clip_path,
+        "duration_seconds": None,
         "created_at": created_at,
     }
 
@@ -27,7 +28,8 @@ def _clip_to_dict(clip: Clip) -> dict[str, Any]:
 async def list_clips(request: Request) -> list[dict[str, Any]]:
     """List all stored alert clips."""
     async with request.app.state.sessionmaker() as session:
-        rows = (await session.scalars(select(Clip).order_by(Clip.created_at.desc()))).all()
+        result = await session.execute(select(Clip).order_by(Clip.created_at.desc()))
+        rows = result.scalars().all()
     return [_clip_to_dict(row) for row in rows]
 
 
@@ -35,7 +37,8 @@ async def list_clips(request: Request) -> list[dict[str, Any]]:
 async def get_clip(alert_id: str, request: Request) -> dict[str, Any]:
     """Return the clip associated with an alert ID."""
     async with request.app.state.sessionmaker() as session:
-        row = await session.scalar(select(Clip).where(Clip.alert_id == alert_id))
+        result = await session.execute(select(Clip).where(Clip.alert_id == alert_id))
+        row = result.scalar_one_or_none()
     if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Clip not found")
     return _clip_to_dict(row)

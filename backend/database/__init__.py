@@ -10,8 +10,16 @@ class Base(DeclarativeBase):
 
 async def init_db(engine: AsyncEngine) -> None:
     """Create database tables for all registered ORM models."""
+    # Import both schema tracks so their tables are registered on the shared runtime Base.
+    from backend import models as _new_models  # noqa: F401
+    from backend.models import legacy as _legacy_models  # noqa: F401
+    from backend.database.base import Base as NewBase
+
+    metadata_sets = [Base.metadata, NewBase.metadata]
+
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        for metadata in metadata_sets:
+            await conn.run_sync(metadata.create_all)
 
 
 def create_engine_and_sessionmaker(database_url: str) -> tuple[AsyncEngine, async_sessionmaker[AsyncSession]]:

@@ -13,8 +13,9 @@ from fastapi.responses import FileResponse, JSONResponse
 
 from backend.config import Settings, get_settings
 from backend.database import create_engine_and_sessionmaker
-from backend.models import Alert, Clip, Event, Zone  # noqa: F401
+from backend import models as _models  # noqa: F401
 from backend.routes.clips import router as clips_router
+from backend.routes.analytics_results import router as analytics_results_router
 from backend.routes.events import (
     ingest_alert,
     ingest_event,
@@ -128,6 +129,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.include_router(health_router)
     app.include_router(events_router)
+    app.include_router(analytics_results_router)
     app.include_router(zones_router)
     app.include_router(clips_router)
     app.include_router(stats_router)

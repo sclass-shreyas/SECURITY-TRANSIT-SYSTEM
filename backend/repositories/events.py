@@ -26,3 +26,17 @@ class EventRepository(BaseRepository[Event]):
             .limit(1)
         )
         return result.scalar_one_or_none()
+
+    async def find_by_frame(
+        self,
+        *,
+        camera_id: UUID,
+        frame_id: int,
+    ) -> Event | None:
+        result = await self.session.execute(
+            select(Event)
+            .where(Event.camera_id == camera_id, Event.frame_id == frame_id)
+            .order_by(Event.timestamp.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()

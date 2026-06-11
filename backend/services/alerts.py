@@ -40,13 +40,18 @@ async def _resolve_event_for_alert(
     payload: AlertIn,
 ) -> Event:
     camera = await camera_repo.ensure_default_camera(settings)
+    metadata = payload.metadata.model_dump() if hasattr(payload.metadata, "model_dump") else dict(payload.metadata)
     if payload.event_id is not None:
         existing = await event_repo.get_by_id(payload.event_id)
         if existing is not None:
             return existing
 
-    frame_id = int(payload.metadata.get("frame_id", 0))
-    matched = await event_repo.find_by_frame_timestamp(camera_id=camera.camera_id, frame_id=frame_id, timestamp=payload.timestamp)
+    frame_id = int(metadata.get("frame_id", 0))
+    matched = await event_repo.find_by_frame_timestamp(
+        camera_id=camera.camera_id,
+        frame_id=frame_id,
+        timestamp=payload.timestamp,
+    )
     if matched is not None:
         return matched
 
@@ -70,6 +75,7 @@ async def create_alert(db: AsyncSession, payload: AlertIn) -> Alert:
     camera_repo = CameraRepository(db)
 
     async with transactional(db):
+        metadata = payload.metadata.model_dump() if hasattr(payload.metadata, "model_dump") else dict(payload.metadata)
         event = await _resolve_event_for_alert(
             event_repo=event_repo,
             camera_repo=camera_repo,
@@ -89,7 +95,7 @@ async def create_alert(db: AsyncSession, payload: AlertIn) -> Alert:
             class_name=payload.class_name,
             zone=payload.zone,
             clip_path=payload.clip_path,
-            metadata_json=payload.metadata,
+            metadata_json=metadata,
         )
         await alert_repo.add(alert)
         if payload.clip_path:
