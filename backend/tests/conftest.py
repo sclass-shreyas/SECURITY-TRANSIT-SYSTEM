@@ -249,7 +249,7 @@ def store() -> InMemoryStore:
 @pytest.fixture()
 def app(tmp_path: Path, store: InMemoryStore):
     settings = Settings(
-        DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5432/smart_transit",
+        DATABASE_URL="postgresql+asyncpg://postgres:root@123@localhost:5432/smart_transit",
         CLIPS_BASE_DIR=str(tmp_path / "clips"),
     )
     application = create_app(settings)

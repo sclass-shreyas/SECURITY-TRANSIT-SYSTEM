@@ -13,7 +13,7 @@ class Settings(BaseSettings):
 
     APP_NAME: str = "Smart Transit Security Backend"
     SERVICE_VERSION: str = "1.0.0"
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/smart_transit"
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:root123@localhost:5432/smart_transit"
     CLIPS_BASE_DIR: str = "clips"
     CORS_ORIGINS: str = "*"
     LOG_LEVEL: str = "INFO"
