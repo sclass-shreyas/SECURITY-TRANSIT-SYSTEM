@@ -92,28 +92,44 @@ class AlertEngine:
     def _save_clip(self, alert_id: str, frames: deque[np.ndarray]) -> str:
         """Persist clip from buffered frames and return relative clip path."""
         if not frames:
+            self.logger.warning("No frames available for clip: %s", alert_id)
             return ""
 
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        file_name = f"alert_{alert_id[:8]}_{timestamp}.avi"
-        output_path = self._clips_dir / file_name
-
-        first_frame = frames[0]
-        height, width = first_frame.shape[:2]
-        writer = cv2.VideoWriter(
-            str(output_path),
-            cv2.VideoWriter_fourcc(*"XVID"),
-            config.TARGET_FPS,
-            (width, height),
-        )
-
         try:
-            for frame in frames:
-                writer.write(frame)
-        finally:
-            writer.release()
+            timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+            file_name = f"alert_{alert_id[:8]}_{timestamp}.avi"
+            output_path = self._clips_dir / file_name
 
-        return str(Path(config.CLIPS_DIR) / file_name)
+            first_frame = frames[0]
+            height, width = first_frame.shape[:2]
+            
+            if height <= 0 or width <= 0:
+                self.logger.error("Invalid frame dimensions: %dx%d", width, height)
+                return ""
+            
+            writer = cv2.VideoWriter(
+                str(output_path),
+                cv2.VideoWriter_fourcc(*"XVID"),
+                config.TARGET_FPS,
+                (width, height),
+            )
+
+            if not writer.isOpened():
+                self.logger.error("Failed to open VideoWriter for %s", output_path)
+                return ""
+
+            try:
+                for frame in frames:
+                    if frame is not None and frame.size > 0:
+                        writer.write(frame)
+            finally:
+                writer.release()
+
+            self.logger.info("Saved clip: %s", file_name)
+            return str(Path(config.CLIPS_DIR) / file_name)
+        except Exception as e:
+            self.logger.error("Error saving clip %s: %s", alert_id, e, exc_info=True)
+            return ""
 
     async def process(
         self,
@@ -135,36 +151,44 @@ class AlertEngine:
 
         finalized: list[dict[str, Any]] = []
         for raw in raw_alerts:
-            alert_type = str(raw.get("alert_type", ""))
-            object_id = int(raw.get("object_id", -1))
+            try:
+                alert_type = str(raw.get("alert_type", ""))
+                object_id = int(raw.get("object_id", -1))
 
-            if self._is_duplicate(alert_type, object_id):
+                if self._is_duplicate(alert_type, object_id):
+                    continue
+
+                alert_id = str(uuid.uuid4())
+                severity = self._score_severity(raw)
+
+                clip_frames = deque(self._frame_buffer)
+                try:
+                    clip_path = await asyncio.to_thread(self._save_clip, alert_id, clip_frames)
+                except Exception as e:
+                    self.logger.error("Failed to save clip for alert %s: %s", alert_id, e)
+                    clip_path = ""
+
+                metadata = raw.get("metadata", {})
+                finalized.append(
+                    {
+                        "alert_id": alert_id,
+                        "alert_type": alert_type,
+                        "severity": severity,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "object_id": object_id,
+                        "class_name": str(raw.get("class_name", "unknown")),
+                        "zone": str(raw.get("zone", "")),
+                        "clip_path": clip_path,
+                        "metadata": {
+                            "dwell_seconds": float(metadata.get("dwell_seconds", 0.0)),
+                            "person_count": int(metadata.get("person_count", 0)),
+                            "confidence": float(metadata.get("confidence", 0.0)),
+                            "frame_id": int(metadata.get("frame_id", event.get("frame_id", -1))),
+                        },
+                    }
+                )
+            except Exception as e:
+                self.logger.error("Error processing alert: %s", e, exc_info=True)
                 continue
-
-            alert_id = str(uuid.uuid4())
-            severity = self._score_severity(raw)
-
-            clip_frames = deque(self._frame_buffer)
-            clip_path = await asyncio.to_thread(self._save_clip, alert_id, clip_frames)
-
-            metadata = raw.get("metadata", {})
-            finalized.append(
-                {
-                    "alert_id": alert_id,
-                    "alert_type": alert_type,
-                    "severity": severity,
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "object_id": object_id,
-                    "class_name": str(raw.get("class_name", "unknown")),
-                    "zone": str(raw.get("zone", "")),
-                    "clip_path": clip_path,
-                    "metadata": {
-                        "dwell_seconds": float(metadata.get("dwell_seconds", 0.0)),
-                        "person_count": int(metadata.get("person_count", 0)),
-                        "confidence": float(metadata.get("confidence", 0.0)),
-                        "frame_id": int(metadata.get("frame_id", event.get("frame_id", -1))),
-                    },
-                }
-            )
 
         return finalized

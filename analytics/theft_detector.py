@@ -25,6 +25,8 @@ class TheftDetector:
         """Initialize MediaPipe pose and temporal landmark state."""
         self.logger = logging.getLogger(self.__class__.__name__)
         self._previous_landmarks: dict[int, dict[str, Any]] = {}
+        self._tracked_objects: dict[int, float] = {}  # object_id -> last_seen_time
+        self._alerted_thefts: set[int] = set()  # object_ids that triggered theft alert
 
         self._enabled = mp is not None
         self._mp_pose = None
@@ -120,7 +122,16 @@ class TheftDetector:
 
         alerts: list[dict[str, Any]] = []
         frame_id = int(event.get("frame_id", -1))
+        current_time = time.time()
 
+        # Update tracked objects
+        current_object_ids = set()
+        for obj in event.get("objects", []):
+            obj_id = int(obj.get("object_id", -1))
+            current_object_ids.add(obj_id)
+            self._tracked_objects[obj_id] = current_time
+
+        # Detect gesture-based theft
         for obj in event.get("objects", []):
             if obj.get("class_name") != "person":
                 continue
@@ -132,6 +143,10 @@ class TheftDetector:
             if confidence <= config.THEFT_CONFIDENCE_THRESHOLD:
                 continue
 
+            if object_id in self._alerted_thefts:
+                continue
+
+            self._alerted_thefts.add(object_id)
             zones = obj.get("zones", [""])
             alerts.append(
                 {
@@ -144,8 +159,21 @@ class TheftDetector:
                         "person_count": len([o for o in event.get("objects", []) if o.get("class_name") == "person"]),
                         "confidence": float(confidence),
                         "frame_id": frame_id,
+                        "theft_type": "gesture",
                     },
                 }
             )
+
+        # Clean up old tracked objects and detect disappearances
+        disappeared_ids = []
+        for obj_id, last_seen in self._tracked_objects.items():
+            time_since_seen = current_time - last_seen
+            # If object hasn't been seen for > 5 seconds, consider it disappeared
+            if time_since_seen > 5.0 and obj_id not in current_object_ids:
+                disappeared_ids.append(obj_id)
+
+        for obj_id in disappeared_ids:
+            del self._tracked_objects[obj_id]
+            self._alerted_thefts.discard(obj_id)
 
         return alerts

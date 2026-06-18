@@ -13,7 +13,7 @@ from uuid import uuid4
 import cv2
 
 import config
-from capture import FrameCapture
+from capture import FrameCapture, find_available_cameras
 from detector import Detector
 from event_publisher import EventPublisher
 from tracker import ObjectTracker
@@ -110,7 +110,12 @@ async def main() -> None:
     base_dir = Path(__file__).resolve().parent
     zones_path = str(base_dir / config.ZONES_FILE)
 
+    # Detect available cameras
+    available_cameras = find_available_cameras()
+    logger.info(f"Available cameras: {available_cameras}")
+    
     capture = FrameCapture(config.CAMERA_INDEX, config.FRAME_WIDTH, config.FRAME_HEIGHT)
+    logger.info(f"Using camera index {config.CAMERA_INDEX}")
     detector = Detector()
     tracker = ObjectTracker()
     zone_manager = ZoneManager(zones_path)

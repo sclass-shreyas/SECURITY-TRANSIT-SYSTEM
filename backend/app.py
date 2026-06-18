@@ -10,6 +10,7 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from backend.config import Settings, get_settings
 from backend.database import create_engine_and_sessionmaker
@@ -143,6 +144,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def serve_dashboard_alias() -> FileResponse:
         """Serve the dashboard from a named alias route."""
         return await serve_dashboard()
+
+    @app.get("/alerts.html", response_class=FileResponse, include_in_schema=False)
+    async def serve_alerts_dashboard() -> FileResponse:
+        """Serve the alerts dashboard."""
+        static_dir = Path(__file__).resolve().parent / "app" / "static"
+        alerts_file = static_dir / "alerts.html"
+        if not alerts_file.exists():
+            raise HTTPException(status_code=404, detail="Alerts dashboard not found")
+        return FileResponse(alerts_file, media_type="text/html")
 
     # Compatibility aliases for the existing detector HTTP publisher.
     app.add_api_route("/events", ingest_event, methods=["POST"], response_model=MessageResponse)

@@ -45,6 +45,7 @@ class CrowdDensityDetector:
 
         alerts: list[dict[str, Any]] = []
 
+        # Check global threshold
         if person_count > config.CROWD_SURGE_THRESHOLD:
             dominant_zone = zone_counter.most_common(1)[0][0] if zone_counter else ""
             alerts.append(
@@ -58,13 +59,23 @@ class CrowdDensityDetector:
                         "person_count": person_count,
                         "confidence": 0.0,
                         "frame_id": frame_id,
+                        "surge_type": "global",
                     },
                 }
             )
 
+        # Check zone-specific thresholds
         for zone_id, count in zone_counts.items():
-            if count <= config.CROWD_SURGE_THRESHOLD:
+            # Get zone-specific threshold or use default
+            zone_threshold = config.ZONE_CROWD_THRESHOLDS.get(zone_id, config.CROWD_SURGE_THRESHOLD)
+            
+            if count <= zone_threshold:
                 continue
+            
+            # Avoid duplicate alert if already triggered by global threshold
+            if zone_id and count == person_count:
+                continue
+                
             alerts.append(
                 {
                     "alert_type": "crowd_surge",
@@ -76,6 +87,7 @@ class CrowdDensityDetector:
                         "person_count": count,
                         "confidence": 0.0,
                         "frame_id": frame_id,
+                        "surge_type": "zone_specific",
                     },
                 }
             )

@@ -15,7 +15,7 @@
     {
       "id": "zone_003",
       "name": "staff_only_service_corridor",
-      "polygon": [[300, 20], [640, 20], [640, 400], [300, 400]],
+      "polygon": [[430, 40], [620, 40], [620, 230], [430, 230]],
       "restricted": true
     }
   ]

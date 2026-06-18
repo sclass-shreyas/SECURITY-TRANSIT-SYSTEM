@@ -1,6 +1,8 @@
 """Configuration values for the Smart Transit Security detection module."""
 
-CAMERA_INDEX = 0
+# Camera index: 0 = built-in/default camera, 1+ = external cameras
+# Use find_available_cameras() from capture.py to detect available cameras
+CAMERA_INDEX = 1
 FRAME_WIDTH = 640
 FRAME_HEIGHT = 640
 CONFIDENCE_THRESHOLD = 0.45

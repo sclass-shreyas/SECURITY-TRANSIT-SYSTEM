@@ -8,6 +8,25 @@ import cv2
 import numpy as np
 
 
+def find_available_cameras(max_index: int = 5) -> list[int]:
+    """Detect all available camera indices.
+    
+    Args:
+        max_index: Maximum index to check.
+        
+    Returns:
+        List of available camera indices. Index 0 is typically the built-in camera,
+        index 1+ are external cameras.
+    """
+    available = []
+    for index in range(max_index):
+        cap = cv2.VideoCapture(index)
+        if cap.isOpened():
+            available.append(index)
+            cap.release()
+    return available
+
+
 class FrameCapture:
     """Capture and preprocess frames from a webcam source."""
 
@@ -15,7 +34,8 @@ class FrameCapture:
         """Initialize and open a camera capture device.
 
         Args:
-            camera_index: OpenCV camera index.
+            camera_index: OpenCV camera index. Use 0 for built-in/default camera,
+                1+ for external cameras. Use find_available_cameras() to detect.
             width: Target output width.
             height: Target output height.
 
