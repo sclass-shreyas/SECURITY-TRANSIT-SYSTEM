@@ -80,22 +80,29 @@ class UnattendedObjectDetector:
                     self._bag_last_position[bag_id] = bag_centroid.copy()
                     self._bag_owner_last_seen[bag_id] = current_time
                 else:
-                    # Owner still nearby or new owner is closer
+                    # Owner still nearby - update last seen time
                     self._bag_owner_last_seen[bag_id] = current_time
                 
-                # Reset unattended timer when owner is nearby
-                self._first_unattended_at.pop(bag_id, None)
-                self._alerted_bag_ids.discard(bag_id)
+                # Person is near bag - no unattended alert yet
                 continue
 
             # No person nearby - bag is unattended
-            # Only start timer if owner has been away for a moment (owner departure detected)
+            # For bags with no owner assigned yet (no one ever near them)
+            if bag_id not in self._bag_owners:
+                # First detection of this bag without any person nearby
+                self._bag_owners[bag_id] = -1  # Mark as having no owner
+                self._bag_owner_last_seen[bag_id] = current_time
+                self._bag_last_position[bag_id] = bag_centroid.copy()
+                self._first_unattended_at[bag_id] = current_time
+                continue
+            
+            # Bag has owner but owner is now away
             owner_id = self._bag_owners.get(bag_id, -1)
             time_since_owner_seen = current_time - self._bag_owner_last_seen.get(bag_id, current_time)
             
-            # Require owner to be away for grace period before starting unattended timer
+            # Require owner to be away for grace period before alerting
             if time_since_owner_seen < config.OWNER_DEPARTURE_GRACE_SECONDS:
-                # Owner just left, don't start timer yet
+                # Owner just left, don't alert yet
                 continue
 
             # Check if bag has moved significantly (stationarity check)
