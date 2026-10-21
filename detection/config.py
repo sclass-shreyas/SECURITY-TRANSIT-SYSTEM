@@ -12,8 +12,10 @@ UNATTENDED_THRESHOLD_SECONDS = 15.0
 API_ENDPOINT = "http://localhost:8000/events"
 POST_TIMEOUT_SECONDS = 2.0
 ZONES_FILE = "zones.json"
-DEVICE = "cuda"
+# Device selection: "auto", "openvino_gpu", "openvino_cpu", "cuda", or "cpu"
+DEVICE = "auto"
 HALF_PRECISION = True
+OPENVINO_DIR = "yolo11n_openvino_model"
 LOG_LEVEL = "INFO"
 FPS_LOG_INTERVAL = 100
 TARGET_FRAME_TIME_SECONDS = 1.0 / 30.0
